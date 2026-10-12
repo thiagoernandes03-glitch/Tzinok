@@ -1,4 +1,3 @@
-
 name: Gerar APK Android
 
 on:
@@ -25,17 +24,16 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Extrair projeto Android
         shell: bash
         run: |
           set -e
+
           mkdir -p extracted
           unzip -q keybind-android.zip -d extracted
-
-          echo "Arquivos Gradle encontrados:"
-          find extracted -type f \
-            \( -name settings.gradle \
-            -o -name settings.gradle.kts \) -print
 
           PROJECT_DIR=$(find extracted -type f \
             \( -name settings.gradle \
@@ -43,20 +41,56 @@ jobs:
             -print -quit | xargs -r dirname)
 
           if [ -z "$PROJECT_DIR" ]; then
-            echo "ERRO: settings.gradle nao encontrado no ZIP."
-            echo "Confira se o ZIP contem um projeto Android Gradle."
+            echo "ERRO: projeto Gradle nao encontrado no ZIP."
             exit 1
           fi
 
-          echo "Projeto encontrado em: $PROJECT_DIR"
+          echo "Projeto encontrado: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
+          if [ ! -f "$PROJECT_DIR/app/build.gradle.kts" ] && \
+             [ ! -f "$PROJECT_DIR/app/build.gradle" ]; then
+            echo "ERRO: arquivo Gradle do aplicativo nao encontrado."
+            exit 1
+          fi
 
-      - name: Configurar Gradle
+      - name: Instalar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.3.1"
 
+      - name: Preparar chave de depuracao
+        working-directory: ${{ env.PROJECT_DIR }}
+        shell: bash
+        run: |
+          set -e
+
+          if [ ! -f debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Verificar configuracao Firebase
+        working-directory: ${{ env.PROJECT_DIR }}
+        shell: bash
+        run: |
+          set -e
+
+          if [ ! -f app/google-services.json ] && \
+             [ ! -f app/src/debug/google-services.json ] && \
+             [ ! -f app/src/google-services.json ]; then
+            echo "ERRO: falta google-services.json."
+            echo "E necessario obter o arquivo correto no Firebase"
+            echo "ou remover a configuracao Google Services se o app nao usa Firebase."
+            exit 1
+          fi
 
       - name: Compilar APK
         working-directory: ${{ env.PROJECT_DIR }}
@@ -69,4 +103,3 @@ jobs:
           path: extracted/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
-          
