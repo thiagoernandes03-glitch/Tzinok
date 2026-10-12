@@ -26,23 +26,29 @@ jobs:
           java-version: "17"
 
       - name: Extrair projeto Android
+        shell: bash
         run: |
+          set -e
           mkdir -p extracted
           unzip -q keybind-android.zip -d extracted
-          echo "Conteudo do ZIP:"
-          find extracted -maxdepth 4 \
-            \( -name settings.gradle -o \
-               -name settings.gradle.kts -o \
-               -name build.gradle -o \
-               -name build.gradle.kts \) -print
+
+          echo "Arquivos Gradle encontrados:"
+          find extracted -type f \
+            \( -name settings.gradle \
+            -o -name settings.gradle.kts \) -print
+
           PROJECT_DIR=$(find extracted -type f \
-            \( -name settings.gradle -o \
-               -name settings.gradle.kts \) \
+            \( -name settings.gradle \
+            -o -name settings.gradle.kts \) \
             -print -quit | xargs -r dirname)
+
           if [ -z "$PROJECT_DIR" ]; then
-            echo "Nao encontrei o arquivo settings.gradle."
+            echo "ERRO: settings.gradle nao encontrado no ZIP."
+            echo "Confira se o ZIP contem um projeto Android Gradle."
             exit 1
           fi
+
+          echo "Projeto encontrado em: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Configurar Gradle
@@ -50,7 +56,7 @@ jobs:
         with:
           gradle-version: "8.9"
 
-            - name: Compilar APK
+      - name: Compilar APK
         working-directory: ${{ env.PROJECT_DIR }}
         run: gradle --no-daemon assembleDebug
 
@@ -58,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aplicativo-android
-          path: |
-            extracted/**/*.apk
+          path: extracted/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 7
           
