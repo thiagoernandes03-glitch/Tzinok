@@ -51,10 +51,12 @@ jobs:
           echo "Projeto encontrado em: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
+
       - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.9"
+          gradle-version: "9.3.1"
+
 
       - name: Compilar APK
         working-directory: ${{ env.PROJECT_DIR }}
