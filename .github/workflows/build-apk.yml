@@ -26,12 +26,13 @@ jobs:
 
       - name: Configurar Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools"
 
       - name: Extrair projeto Android
         shell: bash
         run: |
           set -e
-
           mkdir -p extracted
           unzip -q keybind-android.zip -d extracted
 
@@ -53,11 +54,6 @@ jobs:
             echo "ERRO: arquivo Gradle do aplicativo nao encontrado."
             exit 1
           fi
-
-      - name: Instalar Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "9.3.1"
 
       - name: Preparar chave de depuracao
         working-directory: ${{ env.PROJECT_DIR }}
@@ -81,16 +77,19 @@ jobs:
         working-directory: ${{ env.PROJECT_DIR }}
         shell: bash
         run: |
-          set -e
-
           if [ ! -f app/google-services.json ] && \
              [ ! -f app/src/debug/google-services.json ] && \
              [ ! -f app/src/google-services.json ]; then
-            echo "ERRO: falta google-services.json."
-            echo "E necessario obter o arquivo correto no Firebase"
-            echo "ou remover a configuracao Google Services se o app nao usa Firebase."
+            echo "ERRO: google-services.json nao encontrado."
+            echo "O projeto precisa da configuracao Firebase correta."
+            echo "Se o app nao usa Firebase, remova o plugin Google Services do projeto."
             exit 1
           fi
+
+      - name: Instalar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
 
       - name: Compilar APK
         working-directory: ${{ env.PROJECT_DIR }}
